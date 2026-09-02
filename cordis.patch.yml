@@ -1,2 +1,4 @@
-# Host-only hook plugin; no bundle rows to patch.
-[]
+- insert:
+    - id: self-preserve
+      name: dsh-self-preserve
+      config: {}

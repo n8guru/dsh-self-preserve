@@ -26,13 +26,9 @@ with no `Starting` afterwards.
 
 ## What it does
 
-On `tools/pre-execute` it reads the unit name from `/proc/self/cgroup` and returns `{kind: "deny"}` for any tool `command` matching `systemctl … (stop|kill) … <own unit>`. The deny reason tells the model why and gives the out-of-band route:
+On `tools/pre-execute` it reads the Linux unit name from `/proc/self/cgroup` and returns `{kind: "deny"}` for any tool `command` matching `systemctl … (stop|kill|restart|try-restart) … <own unit>`. For non-systemd supervisors, set `DSH_SELF_PRESERVE_TARGET` to the service label; macOS launchd stop, kill, remove, bootout, unload, and kickstart commands targeting that label are denied.
 
-```
-systemd-run --user --on-active=5 systemctl --user restart deepseek-harness.service
-```
-
-`restart` and `status` stay allowed. Outside a systemd service the plugin registers nothing.
+The plugin logs `[dsh-self-preserve] armed for <target>` when protection is active. If no target can be discovered or configured, it logs an explicit inactive warning. Restarts must be initiated out of band, from another machine or external supervisor. Read-only status commands and operations on other services stay allowed.
 
 ## Install (profile as a local package)
 
@@ -42,7 +38,7 @@ cd ~/.dsh/profiles/web      # and profiles/headless if you use it
 # package.json: add to "dependencies" and to dsh.profile.bundles
 #   "dsh-self-preserve": "file:../../local-mods/dsh-self-preserve"
 pnpm install --ignore-workspace
-systemctl --user restart deepseek-harness.service
+# Restart from another machine or an external supervisor.
 ```
 
 ## Test
@@ -55,6 +51,6 @@ node --test guard.test.mjs
 
 - `guard.js` pure policy (`ownUnit`, `decide`) so it can be tested without a harness
 - `index.js` the Cordis plugin: one `ctx.on("tools/pre-execute", …)` listener
-- `cordis.patch.yml` empty; a host-only hook needs no bundle rows
+- `cordis.patch.yml` mounts the hook as a profile row; listing a package in `dsh.profile.bundles` only composes its patch and does not mount `index.js` by itself
 
 MIT.
