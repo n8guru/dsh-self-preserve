@@ -15,9 +15,18 @@ test("denies plain stop / kill", () => {
   assert.equal(decide("systemctl --user stop deepseek-harness.service", U).kind, "deny");
   assert.equal(decide("systemctl --user kill deepseek-harness", U).kind, "deny");
 });
-test("allows status, restart, other units, non-shell args", () => {
+test("denies in-session restart / try-restart and points at dsh-safe-restart", () => {
+  const d = decide("systemctl --user restart deepseek-harness.service", U);
+  assert.equal(d.kind, "deny");
+  assert.match(d.reason, /dsh-safe-restart/);
+  assert.equal(decide("systemctl --user try-restart deepseek-harness", U).kind, "deny");
+  assert.equal(decide("systemctl --user restart deepseek-harness.service; sleep 8", U).kind, "deny");
+  // the safe path itself and out-of-band scheduling are not systemctl-on-own-unit text
+  assert.equal(decide("dsh-safe-restart --reason 'plugin rebuilt'", U).kind, "allow");
+});
+test("allows status, other units, non-shell args", () => {
   assert.equal(decide("systemctl --user status deepseek-harness.service", U).kind, "allow");
-  assert.equal(decide("systemctl --user restart deepseek-harness.service", U).kind, "allow");
+  assert.equal(decide("systemctl --user daemon-reload", U).kind, "allow");
   assert.equal(decide("systemctl --user stop mesh-pump.service", U).kind, "allow");
   assert.equal(decide("systemctl --user stop mesh-pump.service; systemctl --user status deepseek-harness", U).kind, "allow");
   assert.equal(decide(undefined, U).kind, "allow");
